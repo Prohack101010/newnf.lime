@@ -2,68 +2,7 @@ name: CI
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  macos-ndll:
-    runs-on: macos-11
-    steps:
-
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - uses: krdlab/setup-haxe@v1
-        with:
-          haxe-version: 4.2.5
-
-      - name: Set HAXEPATH
-        run: |
-          echo "HAXEPATH=$HAXE_STD_PATH/.." >> $GITHUB_ENV
-
-      - name: Install Haxe dependencies
-        run: |
-          pushd project/lib/hashlink
-          brew update
-          rm /usr/local/bin/2to3*
-          rm /usr/local/bin/idle3*
-          rm /usr/local/bin/pydoc3*
-          rm /usr/local/bin/python3*
-          brew bundle
-          popd
-          haxelib install hxcpp 4.2.1 --quiet
-          haxelib install format --quiet
-          haxelib install hxp --quiet
-
-      - name: Enable HXCPP compile cache
-        run: |
-          echo "HXCPP_COMPILE_CACHE=~/.hxcpp" >> $GITHUB_ENV
-
-      - name: Rebuild Lime tools
-        run: |
-          haxelib dev lime $GITHUB_WORKSPACE
-          haxelib run lime rebuild tools -nocolor -verbose -nocffi
-          haxelib run lime setup -alias -y -nocffi
-
-      - name: Rebuild Lime (macOS)
-        run: |
-          lime rebuild macos -clean -release -64 -nocolor -verbose -nocffi
-          lime rebuild hl -clean -release -nocolor -verbose -nocffi
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: Mac64-NDLL
-          path: |
-            ndll/Mac64/
-            !**/.gitignore
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: Mac64-Hashlink
-          path: |
-            templates/bin/hl/Mac64
-          if-no-files-found: error
-
   ios-ndll:
-    needs: macos-ndll
     runs-on: macos-11
     steps:
 
@@ -95,10 +34,11 @@ jobs:
           haxelib run lime rebuild tools -nocolor -verbose -nocffi
           haxelib run lime setup -alias -y -nocffi
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: Mac64-NDLL
-          path: ndll/Mac64/
+      - name: Get macOS NDLL
+        run: |
+          cd ndll/Mac64
+          wget https://github.com/mcagabe19-stuff/lime/raw/develop/ndll/Mac64/lime.ndll
+          wget https://github.com/mcagabe19-stuff/lime/raw/develop/ndll/Mac64/lime.ndll.hash
 
       - name: Rebuild Lime (iOS)
         run: |
